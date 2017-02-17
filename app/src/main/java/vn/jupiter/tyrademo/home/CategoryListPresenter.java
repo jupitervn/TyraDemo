@@ -76,23 +76,18 @@ public class CategoryListPresenter implements ListViewWithSearchPresenter {
     }
 
     private Task<CategoryPresentationModel> findCategoryDocCountAsync(final CategoryPresentationModel category) {
-        List<Task<Integer>> tasks = new ArrayList<>();
         ParseQuery<ParseObject> documentCountQuery = ParseQuery.getQuery(DataSchema.DOCUMENT.TABLE);
         documentCountQuery.whereEqualTo(DataSchema.DOCUMENT.ATTR_TYPE, category.getType());
-        tasks.add(documentCountQuery.countInBackground());
-        return Task.whenAllResult(tasks)
-                .onSuccess(new Continuation<List<Integer>, CategoryPresentationModel>() {
+        return documentCountQuery.countInBackground().continueWith(
+                new Continuation<Integer, CategoryPresentationModel>() {
                     @Override
-                    public CategoryPresentationModel then(Task<List<Integer>> task) throws Exception {
+                    public CategoryPresentationModel then(Task<Integer> task) throws Exception {
                         if (task.isCompleted()) {
                             int count = 0;
-                            List<Integer> result = task.getResult();
-                            if (result != null) {
-                                for (Integer integer : result) {
-                                    count += integer;
-                                }
-                                category.setDocumentCount(count);
+                            if (task.getResult() != null) {
+                                count = task.getResult();
                             }
+                            category.setDocumentCount(count);
                         } else if (task.isFaulted()) {
                             throw task.getError();
                         }
